@@ -15,14 +15,12 @@
 #define waitTime 16 		//millisecond wait between redisplays
 #define movementSpeed 0.1 	//player movement speed
 
-#define	ourImageWidth 256
-#define	ourImageHeight 256
+//#define	ourImageHeight 520
+
 #define nstrips 50
 
-/* The texture itself: pattern */
-static GLubyte ourImage[ourImageHeight][ourImageWidth][4];
-/* The texture itself: from image */
-static GLuint texture;
+
+GLuint textures[9];
 
 float xpos = 0, ypos=0, zpos = 10;				//camera position
 float xrot=0, yrot=0;							//camera angle
@@ -37,9 +35,15 @@ float jumpSpeed=0;								//jump height increasing
 
 int helpMenu = 0;								//true if displaying menu
 
-unsigned int tex1;
 int mode = 1;
-char* name = "bike.bmp";
+
+int rollTex1 = 0;
+int rollTex2 = 0;
+int moveTex = 0;
+int stripStart=50;
+int stripEnd=50;
+int forward = 0;
+int texPos = 0;
 
 
 //Function to write a string to the screen at a specified location
@@ -134,6 +138,7 @@ void ground(void) {
 		glEnd();
 	}
 
+	/*
 	//draw flat ground color under the grid
 	glBegin(GL_POLYGON);
 	glColor3f(0.55,0.25,0.1);
@@ -142,12 +147,19 @@ void ground(void) {
 	glVertex3f(groundSize, -0.1, groundSize);
 	glVertex3f(groundSize, -0.1, -groundSize);
 	glEnd();
+	*/
 }
+
+
+
+
+
+
 
 // Loads a texture from an external image file in .bmp format. This is a slight
 // rewrite of code found in Swiftless Tutorial. Great thanks for the tutorial!
-unsigned int LoadTex(char *s) {
-	unsigned int Texture;
+void LoadTex(GLuint texture, char *s) {
+	//unsigned int Texture;
 	FILE* img = NULL;
 	img = fopen(s,"rb");
 	unsigned long bWidth = 0;
@@ -167,89 +179,280 @@ unsigned int LoadTex(char *s) {
 	fread(data,size,1,img);
 	fclose(img);
 
-	glGenTextures(1, &Texture);
-	glBindTexture(GL_TEXTURE_2D, Texture);
+	//glGenTextures(2, textures);
+	glBindTexture(GL_TEXTURE_2D, texture);
 
-	gluBuild2DMipmaps(GL_TEXTURE_2D, 3, bWidth, bHeight,
-					  GL_BGR_EXT, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-	if (data)
-		free(data);
-	return Texture;
-}
-
-
-/* Note the texture initializations! Copied from SGI/Angel */
-void init(void)
-{
-	glClearColor (0.0, 0.0, 0.0, 0.0);
-	//glShadeModel(GL_FLAT);
-	glEnable(GL_DEPTH_TEST);
-
-	//makeTexImage();
-
-	/* Specifies the alignment requirement */
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	/* Sets the wrap parameters in both directions */
+	// Sets the wrap parameters in both directions
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	/* Sets the magnifying and minifying parameters */
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 
-	/* Specifies a two-dimensional texture image */
-	glTexImage2D(GL_TEXTURE_2D, 0, 4, ourImageWidth, ourImageHeight,
-		0, GL_RGBA, GL_UNSIGNED_BYTE, ourImage);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 3, bWidth, bHeight,
+					  GL_BGR_EXT, GL_UNSIGNED_BYTE, data);
 
-	/* Set texture environment parameters */
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 
-	//if (from == 1)
-		texture = LoadTex(name);
+	if (data)
+		free(data);
+	//return Texture;
 }
 
 
-/* Here the texture is glued onto the quads */
-void draw(void)
-{
-	int i, j;
-	float lend, rend, langle, rangle;
+// texture initializations
+void initTex(void) {
+	//glClearColor (0.0, 0.0, 0.0, 0.0);
+	//glShadeModel(GL_FLAT);
+	//glEnable(GL_DEPTH_TEST);
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// Specifies the alignment requirement
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	glGenTextures(3, textures);
+	LoadTex(textures[0], "bike512.bmp");
+	LoadTex(textures[1], "plant512.bmp");
+	LoadTex(textures[2], "wood3.bmp");
+	//LoadTex(textures[3], "meat512.bmp");
+	//LoadTex(textures[4], "lantern512.bmp");
+	//LoadTex(textures[5], "comiccon512.bmp");
+	//LoadTex(textures[6], "hand512.bmp");
+	//LoadTex(textures[7], "droidA512.bmp");
+	//LoadTex(textures[8], "droidB512.bmp");
+
+} //end initTex
+
+
+// Here the texture is glued onto the quads
+void flatTex(void) {
 	glEnable(GL_TEXTURE_2D);
-
 	glBegin(GL_QUADS);
-	if (mode == 1)		/* Mapping: full square to full square */
-	{
 		glTexCoord2f(0.0, 0.0); glVertex3f(-1.0, -1.0, 0.0);
 		glTexCoord2f(0.0, 1.0); glVertex3f(-1.0, 1.0, 0.0);
 		glTexCoord2f(1.0, 1.0); glVertex3f(1.0, 1.0, 0.0);
 		glTexCoord2f(1.0, 0.0); glVertex3f(1.0, -1.0, 0.0);
-	}
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+}
 
-	else if (mode == 0)	/* Mapping: full square to a n-strip cylinder */
-	{
-		for (i = 0; i < nstrips; i++)
-		{
-			j = i+1;
-			lend = (float)i/nstrips;	/* left end of tex strip */
-			rend = (float)j/nstrips;	/* right end of tex strip */
-			langle = 2*PI*i/nstrips;	/* left angle of cyl strip */
-			rangle = 2*PI*j/nstrips;	/* right angle of cyl strip */
-			glTexCoord2f(lend, 0.0); 	glVertex3f(sin(langle), -1.5, cos(langle));
-			glTexCoord2f(lend, 1.0); 	glVertex3f(sin(langle), 1.5, cos(langle));
-			glTexCoord2f(rend, 1.0); 	glVertex3f(sin(rangle), 1.5, cos(rangle));
-			glTexCoord2f(rend, 0.0); 	glVertex3f(sin(rangle), -1.5, cos(rangle));
-		}
+
+// Here the texture is glued onto the quads
+void scrollFlatTex(void) {
+	float lend, rend, langle, rangle;
+	int nsegments = nstrips;
+	int j =0;
+
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	for(int i = stripEnd; i<stripStart; i++) {
+		j =i+1;
+		lend = (float)(i)/nstrips;//i	/* left end of tex strip */
+		rend = (float)(j)/nstrips;//j	/* right end of tex strip */
+		glTexCoord2f(lend, 0.0); glVertex3f((2.0/nsegments)*i, -1.0, 0.0);//-1
+		glTexCoord2f(lend, 1.0); glVertex3f((2.0/nsegments)*i, 1.0, 0.0);//-1
+		glTexCoord2f(rend, 1.0); glVertex3f((2.0/nsegments)*j, 1.0, 0.0);//1
+		glTexCoord2f(rend, 0.0); glVertex3f((2.0/nsegments)*j, -1.0, 0.0);//1
+	}
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+}
+
+void texSpool1(void) {
+	float lend, rend, langle, rangle;
+	//int nstrips = 50;
+	int j;
+	glEnable(GL_TEXTURE_2D);
+
+	//paper wrapping around the scroll
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glBegin(GL_QUADS);
+	for (int i=0; i < stripEnd; i++) {
+		j = i+1;
+		lend = (float)(stripEnd-i)/nstrips;//i	/* left end of tex strip */
+		rend = (float)(stripEnd-j)/nstrips;//j	/* right end of tex strip */
+		langle = 2*PI*i/nstrips;	/* left angle of cyl strip */
+		rangle = 2*PI*j/nstrips;	/* right angle of cyl strip */
+		glTexCoord2f(lend, 0.0); 	glVertex3f(sin(langle)/3, 0, cos(langle)/3);
+		glTexCoord2f(lend, 1.0); 	glVertex3f(sin(langle)/3, 2, cos(langle)/3);
+		glTexCoord2f(rend, 1.0); 	glVertex3f(sin(rangle)/3, 2, cos(rangle)/3);
+		glTexCoord2f(rend, 0.0); 	glVertex3f(sin(rangle)/3, 0, cos(rangle)/3);
 	}
 	glEnd();
 
-	glFlush();
+	//scroll body texture (under the paper)
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	glBegin(GL_QUADS);
+	for (int i=stripEnd; i < nstrips; i++) {
+		j = i+1;
+		lend = (float)i/nstrips;	// left end of tex strip
+		rend = (float)j/nstrips;	// right end of tex strip
+		langle = 2*PI*i/nstrips;	// left angle of cyl strip
+		rangle = 2*PI*j/nstrips;	// right angle of cyl strip
+		glTexCoord2f(lend, 0.0); 	glVertex3f(sin(langle)/3, 0, cos(langle)/3);
+		glTexCoord2f(lend, 1.0); 	glVertex3f(sin(langle)/3, 2, cos(langle)/3);
+		glTexCoord2f(rend, 1.0); 	glVertex3f(sin(rangle)/3, 2, cos(rangle)/3);
+		glTexCoord2f(rend, 0.0); 	glVertex3f(sin(rangle)/3, 0, cos(rangle)/3);
+	}
+	glEnd();    	                                              // /2                /2
 	glDisable(GL_TEXTURE_2D);
+}
+
+
+
+void texSpool2(void) {
+	float lend, rend, langle, rangle;
+	//int nstrips = 50;
+	int j;
+	glEnable(GL_TEXTURE_2D);
+
+	//paper wrapping around the scroll
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glBegin(GL_QUADS);
+	for (int i=stripStart; i < nstrips; i++) {
+		j = i+1;
+		lend = (float)(stripStart-i)/nstrips;//i	/* left end of tex strip */
+		rend = (float)(stripStart-j)/nstrips;//j	/* right end of tex strip */
+		langle = 2*PI*i/nstrips;	/* left angle of cyl strip */
+		rangle = 2*PI*j/nstrips;	/* right angle of cyl strip */
+		glTexCoord2f(lend, 0.0); 	glVertex3f(sin(langle)/3, 0, cos(langle)/3);
+		glTexCoord2f(lend, 1.0); 	glVertex3f(sin(langle)/3, 2, cos(langle)/3);
+		glTexCoord2f(rend, 1.0); 	glVertex3f(sin(rangle)/3, 2, cos(rangle)/3);
+		glTexCoord2f(rend, 0.0); 	glVertex3f(sin(rangle)/3, 0, cos(rangle)/3);
+	}
+	glEnd();
+
+	//scroll body texture (under the paper)
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	glBegin(GL_QUADS);
+	for (int i=0; i < stripStart; i++) {
+		j = i+1;
+		lend = (float)i/nstrips;	// left end of tex strip
+		rend = (float)j/nstrips;	// right end of tex strip
+		langle = 2*PI*i/nstrips;	// left angle of cyl strip
+		rangle = 2*PI*j/nstrips;	// right angle of cyl strip
+		glTexCoord2f(lend, 0.0); 	glVertex3f(sin(langle)/3, 0, cos(langle)/3);
+		glTexCoord2f(lend, 1.0); 	glVertex3f(sin(langle)/3, 2, cos(langle)/3);
+		glTexCoord2f(rend, 1.0); 	glVertex3f(sin(rangle)/3, 2, cos(rangle)/3);
+		glTexCoord2f(rend, 0.0); 	glVertex3f(sin(rangle)/3, 0, cos(rangle)/3);
+	}
+	glEnd();    	                                              // /2                /2
+	glDisable(GL_TEXTURE_2D);
+}
+
+void texCircle(int segments) {
+	//int segments = nstrips;			//number of segments for the cylinder & cone
+	float cx=0, cy=0, cz=0;		//center point
+	float radius = 1;
+	float height = 0.0;
+	//top of stump
+	//generate the first point along the radius
+	float phi = 0;
+	float x1 = radius * cos(phi) + cx;
+	float z1 = radius * sin(phi) + cz;
+	float first[3] = {x1, height, z1};
+	float tx1 = 0.5 * cos(phi) + 0.5;
+	float ty1 = 0.5 * sin(phi) + 0.5;
+	float tFirst[2] = {tx1, ty1};
+
+	for (int i = 0; i<segments; i++) {				//for every segment,
+		phi = 2 * PI * (i+1) / segments;
+		x1 = radius * cos(phi) + cx;
+		z1 = radius * sin(phi) + cz;
+		float next[] = {x1, height, z1};			//get the next vertex
+		tx1 = 0.5 * cos(phi) + 0.5;
+		ty1 = 0.5 * sin(phi) + 0.5;
+		float tNext[2] = {tx1, ty1};
+
+		//draw top of the stump
+		glBegin(GL_POLYGON);
+			glTexCoord2f(0.5,0.5);
+			glVertex3f(cx, height, cz);
+			glTexCoord2fv(tFirst);
+			glVertex3fv(first);
+			glTexCoord2fv(tNext);
+			glVertex3fv(next);
+		glEnd();
+
+		//next point becomes the first for the next interation
+		first[0] = next[0];
+		first[1] = next[1];
+		first[2] = next[2];
+		tFirst[0] = tNext[0];
+		tFirst[1] = tNext[1];
+	}
+}
+
+
+void texStump(void) {
+	float lend, rend, langle, rangle;
+	//int nstrips = 50;
+	int j;
+	glEnable(GL_TEXTURE_2D);
+
+
+	glBegin(GL_QUADS);
+	for (int i=0; i < nstrips; i++) {
+		j = i+1;
+		lend = (float)i/nstrips;	// left end of tex strip
+		rend = (float)j/nstrips;	// right end of tex strip
+		langle = 2*PI*i/nstrips;	// left angle of cyl strip
+		rangle = 2*PI*j/nstrips;	// right angle of cyl strip
+		glTexCoord2f(lend, 0.0); 	glVertex3f(sin(langle), 0, cos(langle));
+		glTexCoord2f(lend, 1.0); 	glVertex3f(sin(langle), 0.5, cos(langle));
+		glTexCoord2f(rend, 1.0); 	glVertex3f(sin(rangle), 0.5, cos(rangle));
+		glTexCoord2f(rend, 0.0); 	glVertex3f(sin(rangle), 0, cos(rangle));
+	}
+	glEnd();
+
+	texCircle(nstrips); //bottomwa
+
+	glPushMatrix();
+	glTranslatef(0,0.5,0);
+	texCircle(nstrips);	//top
+	glPopMatrix();
+
+	glDisable(GL_TEXTURE_2D);
+}
+
+
+
+
+void spool1(void) {
+	texSpool1();
+
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+
+	glPushMatrix();
+	glTranslatef(0,-0.25,0);
+	glScalef(0.5,0.5,0.5);
+	texStump();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0,2,0);
+	glScalef(0.5,0.5,0.5);
+	texStump();
+	glPopMatrix();
+}
+
+
+void spool2(void) {
+	texSpool2();
+
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+
+	glPushMatrix();
+	glTranslatef(0,-0.25,0);
+	glScalef(0.5,0.5,0.5);
+	texStump();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0,2,0);
+	glScalef(0.5,0.5,0.5);
+	texStump();
+	glPopMatrix();
 }
 
 
@@ -263,14 +466,37 @@ void display(void) {
  	glTranslatef(-xpos,-ypos,-zpos);	//viewer position
 	gluLookAt(0,3,0,  0,3,5,  0,1,0);	//camera
 
-	ground();							//draw ground
 
-	draw();
+	ground(); //draw ground
+
+
+
+
+	glPushMatrix();
+	glTranslatef(-3,0,0.5);
+	glRotatef(180,0,1,0);
+	spool1();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(7,0,0.5);
+	glRotatef(180,0,1,0);
+	spool2();
+	glPopMatrix();
+
+	float stripSize = 2.0/nstrips;
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glPushMatrix();
+	glTranslatef(-3-stripSize*(stripEnd-50)-stripSize*stripStart+stripSize*texPos,1,0.15);
+	scrollFlatTex();
+	glPopMatrix();
+
+
 
 	menu();
 
 	glutSwapBuffers();
-}
+} //end display
 
 
 //sets key press states to true when the key gets pressed
@@ -322,7 +548,14 @@ void mouse(int butt, int state, int x,  int y) {
 		yrot += yrotChange;			//apply the y rotation change to make it permanent
 		xrotChange = yrotChange = 0;//reset temporary rotation change to 0
 	}
+	if (state == GLUT_DOWN  &&  butt == GLUT_RIGHT_BUTTON) {	//right click
+		if(forward  &&  !rollTex1  &&  !rollTex2  &&  !moveTex)
+			rollTex2 = 1;
+		else if(!rollTex1  &&  !rollTex2  &&  !moveTex)
+			rollTex1 = 1;
+	}
 }
+
 
 // Changes the temporary view rotation while the left mouse button is pressed.
 // The temporary rotation angle is proportional to the distance of the mouse
@@ -349,7 +582,8 @@ void timer(int value) {
 	float newxrot = xrot + xrotChange;
 	float newyrot = yrot + yrotChange;
 
-	//viewer position change using the w a s d keys. Moves relative to the viewing angle.
+	//viewer position change using the w a s d keys.
+	//Moves relative to the viewing angle.
 	if (a_state) {								//a key is pressed (strafe left)
 		float yrotrad;
 		yrotrad = (newyrot / 180 * PI);
@@ -405,6 +639,71 @@ void timer(int value) {
 		}
 	}
 
+
+
+	if(forward){
+		if(rollTex2) {
+			stripStart++;
+			if(stripStart == 50) {
+				rollTex2 = 0;
+				moveTex = 1;
+			}
+		}
+		else if (moveTex) {
+			texPos--;
+			if(texPos==0) {
+				//forward = 0;
+				moveTex = 0;
+				rollTex1 = 1;
+			}
+		}
+		else if(rollTex1) {
+			//stripStart++;
+			stripEnd++;
+			if (stripEnd == nstrips){
+				forward = 0;
+				rollTex1 = 0;
+				//moveTex = 1;
+			}
+		}
+
+
+	}
+
+	else { //not forward
+		if (rollTex1){
+			//stripStart--;
+			stripEnd--;
+			if(stripEnd == 0) {
+				//forward = 1;
+				rollTex1 = 0;
+				moveTex = 1;
+
+			}
+		}
+		else if(moveTex){
+
+			if (texPos == 200){
+				//forward = 1;
+				moveTex = 0;
+				rollTex2 = 1;
+			}
+			else {
+				texPos++;
+			}
+		}
+		else if(rollTex2) {
+			stripStart--;
+			if(stripStart == 0) {
+				forward = 1;
+				rollTex2 = 0;
+
+			}
+
+		}
+	}
+
+
 	glutPostRedisplay();						//redraw scene
 	glutTimerFunc(waitTime, timer, 1);			//set next timer
 }
@@ -429,19 +728,20 @@ void reshape(int w, int h) {
 
 
 int main(int argc, char **argv) {
-	tex1 = LoadTex("bike.bmp");
-	printf("%d\n",tex1);
-	init();
-
 	glutInit(&argc, argv);
  	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
  	glutInitWindowSize(screenWidth, screenHeight);
  	glutCreateWindow("Nightmare");
+
  	glEnable(GL_DEPTH_TEST);
  	glClearColor(0,0,0,0);
+ 	glShadeModel(GL_FLAT);
 
  	glutIgnoreKeyRepeat(1);	// disables glut from simulating key press and
  							// release repetitions when holding down a key
+
+ 	initTex();
+
  	//event callbacks
  	glutDisplayFunc(display);			//display
  	glutReshapeFunc(reshape);			//reshape window
@@ -449,7 +749,7 @@ int main(int argc, char **argv) {
  	glutMotionFunc(motion);				//mouse click movement
  	glutKeyboardFunc(keyboard);			//key presses
  	glutKeyboardUpFunc(keyboardUp);		//key release
- 	//glutTimerFunc(waitTime, timer, 1);	//redraws world at intervals
+ 	glutTimerFunc(waitTime, timer, 1);	//redraws world at intervals
 
  	glutMainLoop();
 	return 0;
